@@ -13,6 +13,7 @@ class User extends Model {
 	const SESSION = "User";
 	const SECRET = "HcodePhp7_Secret";
 	const SECRET_IV = "HcodePhp7_SECRET_IV";
+	const ERROR = "UserError";
 
 	public static function getFromSession() {
 
@@ -65,7 +66,7 @@ class User extends Model {
 
 		if (count($results) === 0) {
 
-			throw new \Exceptions("Usuário inexistente ou senha inválida.");
+			throw new \Exception("Usuário inexistente ou senha inválida.");
 		}
 
 		$data = $results[0];
@@ -74,6 +75,8 @@ class User extends Model {
 
 			$user = new User();
 
+			$data['desperson'] = utf8_encode($data['desperson']);
+    			
 			$user->setData($data);
 
 			$_SESSION[User::SESSION] = $user->getValues();
@@ -81,7 +84,7 @@ class User extends Model {
 			return $user;
 
 		} else {
-			throw new \Exceptions("Usuário inexistente ou senha inválida.");
+			throw new \Exception("Usuário inexistente ou senha inválida.");
 		}
 
 	}	
@@ -116,9 +119,9 @@ class User extends Model {
 		$sql = new Sql();
 
 		$results = $sql->select("CALL sp_users_save(:desperson, :deslogin, :despassword, :desemail, :nrphone, :inadmin)", array(
-			":desperson"=>$this->getdesperson(),
+			":desperson"=>utf8_decode($this->getdesperson()),
 			":deslogin"=>$this->getdeslogin(),
-			":despassword"=>$this->getdespassword(),
+			":despassword"=>User::getPasswordHash($this->getdespassword()),
 			":desemail"=>$this->getdesemail(),
 			":nrphone"=>$this->getnrphone(),
 			":inadmin"=>$this->getinadmin()
@@ -150,9 +153,9 @@ class User extends Model {
 
 		$results = $sql->select("CALL sp_usersupdate_save(:iduser, :desperson, :deslogin, :despassword, :desemail, :nrphone, :inadmin)", array(
 			":iduser"=>$this->getiduser(),
-			":desperson"=>$this->getdesperson(),
+			":desperson"=>utf8_decode($this->getdesperson()),
 			":deslogin"=>$this->getdeslogin(),
-			":despassword"=>$this->getdespassword(),
+			":despassword"=>User::getPasswordHash($this->getdespassword()),
 			":desemail"=>$this->getdesemail(),
 			":nrphone"=>$this->getnrphone(),
 			":inadmin"=>$this->getinadmin()
@@ -263,6 +266,31 @@ class User extends Model {
 			":password"=>$password,
 			":iduser"=>$this->getiduser()
 		));
+	}
+
+	public static function setError($msg)
+	{
+		$_SESSION[User::ERROR] = $msg;
+	}
+
+	public static function getError()
+	{
+		$msg = (isset($_SESSION[User::ERROR]) && $_SESSION[User::ERROR]) ? $_SESSION[User::ERROR] : '';
+		User::clearError();
+		return $msg;
+	}
+
+	public static function clearError()
+	{
+		$_SESSION[User::ERROR] = NULL;
+	}
+
+	public static function getPasswordHash($password) {
+
+		return password_hash($password, PASSWORD_DEFAULT, [
+			'cost'=>12
+		]);
+
 	}
 }	
 
